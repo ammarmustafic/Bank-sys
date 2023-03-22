@@ -18,10 +18,10 @@ string generateRandomResponse() {
 int response = rand() % 5;
 if (response == 0) {
 	Sleep(600);
-return "We're sorry, but we cannot help you with that issue at this time. Please visit a Unicredit Bank location in your city for assistance.";
+return "We're sorry, but we cannot help you with that issue at this time. Please visit our Bank location in your city for assistance.";
 } else if (response == 1) {
 	Sleep(600);
-return "Thank you for contacting Unicredit Bank support. We have forwarded your issue to the appropriate department and will get back to you as soon as possible.";
+return "Thank you for contacting Bank support. We have forwarded your issue to the appropriate department.";
 } else if (response == 2) {
 	Sleep(600);
 return "We apologize for the inconvenience, but that feature is currently under maintenance. Please try again later.";
@@ -86,15 +86,15 @@ void loadBalances(string username) {
 // user menu
 void userMenu(string username, string password) {
 	loadBalances(username);
-	cout << "Welcome to UniCredit Bank, " << username << endl;
+	cout << "Welcome to the Bank, " << username << endl;
+	usergoto:
     cout << "Choose what do you want" << endl;
     cout << "1. Transfer money" << endl;
-    cout << "2. Deposit money" << endl;
-    cout << "3. Withdraw money" << endl;
-    cout << "4. Change password" << endl;
-    cout << "5. Change username" << endl;
-    cout << "6. Contact support" << endl;
-    cout << "7. Log out" << endl;
+    cout << "2. Withdraw money" << endl;
+    cout << "3. Change password" << endl;
+    cout << "4. Change username" << endl;
+    cout << "5. Contact support" << endl;
+    cout << "6. Log out" << endl;
     int choice;
     cin >> choice;
     
@@ -138,28 +138,39 @@ void userMenu(string username, string password) {
     ofstream transactionsFile("Accounts/transactions.txt", ios_base::app);
     transactionsFile << username << " transferred $" << amount << " to " << recipient << endl;
     transactionsFile.close();
-}       
-
-//		else if (choice == 2) {
-//          double amount;
-//          cout << "Enter the amount you want to deposit: ";
-//          cin >> amount;
-//          accountBalances[username]+= amount;
-//          saveBalances(username);
-//          cout << "Successfully deposited $" << amount << "." << endl;
-//        }
-		else if (choice == 3) {
+}
+		else if (choice == 2) {
+			Sleep(300);
+		  system("CLS");
+		  againwdr:
           double amount;
           cout << "Enter the amount you want to withdraw: ";
           cin >> amount;
           if (amount > accountBalances[username]) {
             cout << "You do not have sufficient funds to make this withdrawal." << endl;
-            return;
+            goto againwdr;
           }
+		  else if (amount <= 0) {
+		  	cout<<"You can not withdraw nothing. Try again." << endl;
+		  	Sleep(700);
+		  	system("CLS");
+		  	goto againwdr;
+		  }
+		   else {
           accountBalances[username]-= amount;
+          saveBalances(username);
+          Sleep(400);
           cout << "Successfully withdrew $" << amount << "." << endl;
-        } else if (choice == 4) {
-        	againburke:
+          Sleep(800);
+          cout << "Please login again because of our security."<<endl;
+          Sleep(900);
+          system("CLS");
+         } 
+		} 
+		  else if (choice == 3) {
+          againburke:
+          	Sleep(300);
+		  system("CLS");
           cout << "Enter your new password: ";
           string newPassword;
           cin >> newPassword;
@@ -170,6 +181,7 @@ void userMenu(string username, string password) {
             goto againburke;
           }
           password = newPassword;
+          Sleep(350);
           cout << "Successfully changed password." << endl;
           
           // update password in users.txt file 
@@ -188,19 +200,27 @@ void userMenu(string username, string password) {
           ofstream output("Accounts/users.txt");
           output << buffer.str();
           output.close();
-        } else if (choice == 5) {
+        } 
+		else if (choice == 4) {
+		  opetuser:
+		  Sleep(300);
+		  system("CLS");
           cout << "Enter your new username: ";
           string newUsername;
           cin >> newUsername;
+          
           if(newUsername == username) {
-            cout << "You cannot change your username to your current username. Please enter a different username." << endl;
-            exit(0);
+            cout << "Invalid. You cannot change your username to your current username. Please enter a different username." << endl;
+            Sleep(800);
+            system("CLS");
+            goto opetuser;
         }
-          // update username in database - isn't necessary but i did it idk why :D 
+        
+          // update username in database
           database[newUsername] = database[username];
           database.erase(username);
           
-          // update username in users.txt file
+          // update username in users.txt 
           fstream file("Accounts/users.txt");
           string line;
           stringstream buffer;
@@ -216,9 +236,27 @@ void userMenu(string username, string password) {
           ofstream output("Accounts/users.txt");
           output << buffer.str();
           output.close();
-          cout << "Successfully changed username." << endl;
+          Sleep(350);
+          cout << "Successfully changed username. Please Login again." << endl;
+          
+          // update username in balances.txt
+          fstream f("Accounts/balances.txt");
+          string pronadji;
+          stringstream buffer2;
+          while (getline(f, pronadji)) {
+            string key = pronadji.substr(0, pronadji.find(" "));
+            if (key == username) {
+              buffer2 << newUsername << pronadji.substr(pronadji.find(" ")) << endl;
+            } else {
+              buffer2 << pronadji << endl;
+            }
+          }
+          f.close();
+          ofstream prikaz("Accounts/balances.txt");
+          prikaz << buffer2.str();
+          prikaz.close();
         }
-        else if (choice == 6) {
+        else if (choice == 5) {
         	system("CLS");
           cout << "Wait, you are calling support..." << endl;
           Sleep(800);
@@ -227,10 +265,16 @@ void userMenu(string username, string password) {
           cin.ignore();
           getline(cin, problem);
           cout << generateRandomResponse() << endl;
-        } else if (choice == 7) {
+        } else if (choice == 6) {
+        	cout<<"Logging you out, wait...";
+        	Sleep(800);
+        	system("CLS");
           return;
         } else {
-          cout << "Invalid choice." << endl;
+          cout << "Invalid choice. Try again." << endl;
+          Sleep(800);
+          system("CLS");
+          goto usergoto;
         }
 }
 
@@ -255,7 +299,6 @@ for (int i = 0; i < email.length(); i++) {
   char c = email[i];
   if (c == '@') {
     isValid = true;
-    // Check if there is some text after "@" symbol
     if (i + 1 < email.length() && email[i+1] != '.') {
       hasTextAfterAtSymbol = true;
     }
@@ -335,6 +378,7 @@ if (!isValid) {
       break;
     }
   }
+  
   input.close();
   if (taken) {
     cout << "This username is already taken. Try again." << endl;
@@ -350,6 +394,7 @@ if (!isValid) {
       break;
     }
   }
+  
   if (!isValid) {
     cout << "Username cannot be all in caps." << endl;
     return;
@@ -371,6 +416,9 @@ if (!isValid) {
     if (number.length() > 12) {
   isValid = false;
 }
+	else if(number.length() < 6) {
+		isValid = false;
+	}
     if (isValid) {
       break;
     } else {
@@ -406,7 +454,8 @@ string creditCard = to_string(rand_dist(rand_gen));
 
 cout << "Successfully registered.\nYour credit card number is: " << creditCard << endl;
 Sleep(650);
-// creating folder accounts, and adding users.txt in it
+
+// creating folder and txt in it 
   CreateDirectory("Accounts", NULL);
   ofstream output("Accounts/users.txt", ios::app);
   output << username << ":" << password << endl;
@@ -434,7 +483,7 @@ cin >> username;
 cout << "Enter your password: ";
 cin >> password;
 
-// check if account exists
+// checks if account exists
 ifstream input("Accounts/users.txt");
   string line;
   bool found = false;
@@ -484,6 +533,9 @@ int main() {
     } else if (choice == 2) {
       login();
     } else if (choice == 3) {
+    	system("CLS");
+      cout<<"Exiting...";
+      Sleep(600);
       return 0;
     } else {
       cout << "Invalid choice." << endl;
