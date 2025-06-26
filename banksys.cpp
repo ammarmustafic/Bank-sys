@@ -1,545 +1,333 @@
 #include <iostream>
+#include <vector>
 #include <string>
-#include <unordered_map>
-#include <cctype>
-#include <chrono>
-#include <sstream>
+#include <algorithm>
 #include <fstream>
-#include <cstdlib>
+#include <chrono>
 #include <thread>
 #include <random>
+#include <unordered_map>
+#include <sstream>
+#include <iomanip>
+#include <limits>
+
+#ifdef _WIN32
 #include <windows.h>
-using namespace std;
+#endif
 
-unordered_map<string, string> database;
-unordered_map<string, double> accountBalances;
-
-string generateRandomResponse() {
-int response = rand() % 5;
-if (response == 0) {
-	Sleep(600);
-return "We're sorry, but we cannot help you with that issue at this time. Please visit our Bank location in your city for assistance.";
-} else if (response == 1) {
-	Sleep(600);
-return "Thank you for contacting Bank support. We have forwarded your issue to the appropriate department.";
-} else if (response == 2) {
-	Sleep(600);
-return "We apologize for the inconvenience, but that feature is currently under maintenance. Please try again later.";
-} else if (response == 3) {
-	Sleep(600);
-return "Thank you for bringing this issue to our attention. We will work to resolve it as soon as possible.";
-} else if (response == 4) {
-	Sleep(600);
-return "We're sorry, but that service is not currently available. Please check back later or visit a Unicredit Bank location for assistance.";
-}
+void clearScreen() {
+    #ifdef _WIN32
+        system("cls");
+    #else
+        system("clear");
+    #endif
 }
 
-
-// save balance
-void saveBalances(string username) {
-    ifstream input("Accounts/balances.txt");
-    ofstream output("Accounts/balances_temp.txt");
-    string line;
-    bool userFound = false;
-    while (getline(input, line)) {
-        stringstream ss(line);
-        string file_username;
-        double balance;
-        ss >> file_username >> balance;
-        if (file_username == username) {
-            output << username << " " << accountBalances[username] << endl;
-            userFound = true;
-        } else {
-            output << line << endl;
-        }
-    }
-    input.close();
-    output.close();
-
-    if (!userFound) {
-        ofstream output("Accounts/balances_temp.txt", ios_base::app);
-        output << username << " " << accountBalances[username] << endl;
-        output.close();
-    }
-
-    remove("Accounts/balances.txt");
-    rename("Accounts/balances_temp.txt", "Accounts/balances.txt");
+void sleep(int milliseconds) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
 }
 
-// load balance
-void loadBalances(string username) {
-  ifstream input("Accounts/balances.txt");
-    string line;
-    while (getline(input, line)) {
-        stringstream ss(line);
-        string file_username;
-        double balance;
-        ss >> file_username >> balance;
-        if(file_username == username){
-            accountBalances[username] = balance;
-            break;
-        }
-    }
-    input.close();
-}
+struct Account {
+    std::string accountNumber;
+    double balance = 0.0;
+};
 
-// user menu
-void userMenu(string username, string password) {
-	loadBalances(username);
-	cout << "Welcome to the Bank, " << username << endl;
-	usergoto:
-    cout << "Choose what do you want" << endl;
-    cout << "1. Transfer money" << endl;
-    cout << "2. Withdraw money" << endl;
-    cout << "3. Change password" << endl;
-    cout << "4. Change username" << endl;
-    cout << "5. Contact support" << endl;
-    cout << "6. Log out" << endl;
-    int choice;
-    cin >> choice;
-    
-    
-    if (choice == 1) {
-    cout << "Enter the username of the recipient: ";
-    string recipient;
-    cin >> recipient;
-    double amount;
-    cout << "Enter the amount you want to transfer: ";
-    cin >> amount;
-    if(recipient == username) {
-        cout<<"You cannot send money to yourself.";
-        exit(0);
-    }
-    ifstream usersFile1("Accounts/users.txt");
-    string line;
-    bool recipientExists = false;
-    while (getline(usersFile1, line)) {
-        if (line.find(recipient + ":") == 0) {
-            recipientExists = true;
-            break;
-        }
-    }
-    usersFile1.close();
+struct User {
+    std::string username;
+    size_t hashedPassword;
+    std::string email;
+    Account account;
+};
 
-    if (!recipientExists) {
-        cout << "The recipient does not have an account." << endl;
-        return;
-    } else if (accountBalances[username] < amount) {
-        cout << "You do not have sufficient funds to make this transfer." << endl;
-        return;
+class BankSystem {
+public:
+    BankSystem(const std::string& dataFile) 
+        : m_dataFile(dataFile), m_rng(std::chrono::steady_clock::now().time_since_epoch().count()) {
+        loadData();
     }
-    accountBalances[username] -= amount;
-    accountBalances[recipient] += amount;
-    saveBalances(username);
-    saveBalances(recipient);
-    cout << "Successfully transferred $" << amount << " to " << recipient << "." << endl;
 
-    // adding transaction to file 
-    ofstream transactionsFile("Accounts/transactions.txt", ios_base::app);
-    transactionsFile << username << " transferred $" << amount << " to " << recipient << endl;
-    transactionsFile.close();
-}
-		else if (choice == 2) {
-			Sleep(300);
-		  system("CLS");
-		  againwdr:
-          double amount;
-          cout << "Enter the amount you want to withdraw: ";
-          cin >> amount;
-          if (amount > accountBalances[username]) {
-            cout << "You do not have sufficient funds to make this withdrawal." << endl;
-            goto againwdr;
-          }
-		  else if (amount <= 0) {
-		  	cout<<"You can not withdraw nothing. Try again." << endl;
-		  	Sleep(700);
-		  	system("CLS");
-		  	goto againwdr;
-		  }
-		   else {
-          accountBalances[username]-= amount;
-          saveBalances(username);
-          Sleep(400);
-          cout << "Successfully withdrew $" << amount << "." << endl;
-          Sleep(800);
-          cout << "Please login again because of our security."<<endl;
-          Sleep(900);
-          system("CLS");
-         } 
-		} 
-		  else if (choice == 3) {
-          againburke:
-          	Sleep(300);
-		  system("CLS");
-          cout << "Enter your new password: ";
-          string newPassword;
-          cin >> newPassword;
-          if(newPassword == password) {
-            cout << "You cannot change your password to your current password. Please enter a different password." << endl;
-            Sleep(800);
-            system("CLS");
-            goto againburke;
-          }
-          password = newPassword;
-          Sleep(350);
-          cout << "Successfully changed password." << endl;
-          
-          // update password in users.txt file 
-          fstream file("Accounts/users.txt");
-          string line;
-          stringstream buffer;
-          while (getline(file, line)) {
-            string key = line.substr(0, line.find(":"));
-            if (key == username) {
-              buffer << username << ":" << newPassword << endl;
-            } else {
-              buffer << line << endl;
+    ~BankSystem() {
+        saveData();
+    }
+
+    void run() {
+        while (m_isRunning) {
+            displayMainMenu();
+            int choice = getUserChoice();
+            switch (choice) {
+                case 1: handleRegistration(); break;
+                case 2: handleLogin(); break;
+                case 3: m_isRunning = false; break;
+                default:
+                    std::cout << "\nInvalid selection. Please try again." << std::endl;
+                    sleep(1000);
+                    break;
             }
-          }
-          file.close();
-          ofstream output("Accounts/users.txt");
-          output << buffer.str();
-          output.close();
-        } 
-		else if (choice == 4) {
-		  opetuser:
-		  Sleep(300);
-		  system("CLS");
-          cout << "Enter your new username: ";
-          string newUsername;
-          cin >> newUsername;
-          
-          if(newUsername == username) {
-            cout << "Invalid. You cannot change your username to your current username. Please enter a different username." << endl;
-            Sleep(800);
-            system("CLS");
-            goto opetuser;
+        }
+        std::cout << "\nSystem shutting down. Goodbye." << std::endl;
+    }
+
+private:
+    std::unordered_map<std::string, User> m_users;
+    std::string m_dataFile;
+    std::string m_currentUser;
+    bool m_isRunning = true;
+    std::mt19937 m_rng;
+
+    void displayMainMenu() {
+        clearScreen();
+        std::cout << "===== UNICREDIT BANK Mainframe v3.0 =====" << std::endl;
+        std::cout << "1. Register New Account" << std::endl;
+        std::cout << "2. Login to Existing Account" << std::endl;
+        std::cout << "3. Exit System" << std::endl;
+        std::cout << "========================================" << std::endl;
+        std::cout << "Enter your selection: ";
+    }
+
+    void displayUserMenu() {
+        clearScreen();
+        std::cout << "===== Welcome, Operator " << m_currentUser << " =====" << std::endl;
+        std::cout << "Account: " << m_users[m_currentUser].account.accountNumber << std::endl;
+        std::cout << std::fixed << std::setprecision(2) << "Balance: $" << m_users[m_currentUser].account.balance << std::endl;
+        std::cout << "---------------------------------" << std::endl;
+        std::cout << "1. Transfer Funds" << std::endl;
+        std::cout << "2. Deposit Funds" << std::endl;
+        std::cout << "3. Withdraw Funds" << std::endl;
+        std::cout << "4. View Transaction Log" << std::endl;
+        std::cout << "5. Logout" << std::endl;
+        std::cout << "=================================" << std::endl;
+        std::cout << "Enter your selection: ";
+    }
+
+    int getUserChoice() {
+        int choice;
+        std::cin >> choice;
+        while (std::cin.fail()) {
+            std::cout << "Invalid input. Please enter a number: ";
+            std::cin.clear();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            std::cin >> choice;
+        }
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        return choice;
+    }
+
+    void handleRegistration() {
+        clearScreen();
+        std::cout << "--- New Account Registration ---" << std::endl;
+        User newUser;
+        
+        std::cout << "Enter username: ";
+        std::getline(std::cin, newUser.username);
+
+        if (m_users.count(newUser.username)) {
+            std::cout << "Username already exists." << std::endl;
+            sleep(1500);
+            return;
+        }
+
+        std::cout << "Enter email: ";
+        std::getline(std::cin, newUser.email);
+
+        std::cout << "Enter password: ";
+        std::string password;
+        std::getline(std::cin, password);
+        newUser.hashedPassword = std::hash<std::string>{}(password);
+        
+        newUser.account.accountNumber = generateAccountNumber();
+        newUser.account.balance = 100.0; 
+
+        m_users[newUser.username] = newUser;
+        std::cout << "\nRegistration successful! Your account number is " << newUser.account.accountNumber << std::endl;
+        std::cout << "An initial deposit of $100.00 has been made." << std::endl;
+        sleep(3000);
+    }
+
+    void handleLogin() {
+        clearScreen();
+        std::cout << "--- Secure Login ---" << std::endl;
+        std::cout << "Enter username: ";
+        std::string username;
+        std::getline(std::cin, username);
+
+        std::cout << "Enter password: ";
+        std::string password;
+        std::getline(std::cin, password);
+
+        if (m_users.count(username) && m_users[username].hashedPassword == std::hash<std::string>{}(password)) {
+            m_currentUser = username;
+            std::cout << "\nLogin successful. Authenticating..." << std::endl;
+            sleep(1500);
+            userSession();
+        } else {
+            std::cout << "\nAuthentication failed. Invalid credentials." << std::endl;
+            sleep(2000);
+        }
+    }
+
+    void userSession() {
+        bool loggedIn = true;
+        while(loggedIn) {
+            displayUserMenu();
+            int choice = getUserChoice();
+            switch(choice) {
+                case 1: handleTransfer(); break;
+                case 2: handleDeposit(); break;
+                case 3: handleWithdrawal(); break;
+                case 4: viewTransactions(); break;
+                case 5: loggedIn = false; break;
+                default:
+                    std::cout << "\nInvalid selection." << std::endl;
+                    sleep(1000);
+                    break;
+            }
+        }
+        m_currentUser.clear();
+        std::cout << "\nSession terminated. Logging out..." << std::endl;
+        sleep(1500);
+    }
+
+    void handleTransfer() {
+        std::cout << "Enter recipient username: ";
+        std::string recipient;
+        std::getline(std::cin, recipient);
+
+        if(!m_users.count(recipient) || recipient == m_currentUser) {
+            std::cout << "Invalid recipient." << std::endl;
+            sleep(1500);
+            return;
+        }
+
+        std::cout << "Enter amount to transfer: $";
+        double amount;
+        std::cin >> amount;
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+
+        if (amount <= 0 || amount > m_users[m_currentUser].account.balance) {
+            std::cout << "Invalid amount or insufficient funds." << std::endl;
+            sleep(1500);
+            return;
         }
         
-          // update username in database
-          database[newUsername] = database[username];
-          database.erase(username);
-          
-          // update username in users.txt 
-          fstream file("Accounts/users.txt");
-          string line;
-          stringstream buffer;
-          while (getline(file, line)) {
-            string key = line.substr(0, line.find(":"));
-            if (key == username) {
-              buffer << newUsername << line.substr(line.find(":")) << endl;
-            } else {
-              buffer << line << endl;
-            }
-          }
-          file.close();
-          ofstream output("Accounts/users.txt");
-          output << buffer.str();
-          output.close();
-          Sleep(350);
-          cout << "Successfully changed username. Please Login again." << endl;
-          
-          // update username in balances.txt
-          fstream f("Accounts/balances.txt");
-          string pronadji;
-          stringstream buffer2;
-          while (getline(f, pronadji)) {
-            string key = pronadji.substr(0, pronadji.find(" "));
-            if (key == username) {
-              buffer2 << newUsername << pronadji.substr(pronadji.find(" ")) << endl;
-            } else {
-              buffer2 << pronadji << endl;
-            }
-          }
-          f.close();
-          ofstream prikaz("Accounts/balances.txt");
-          prikaz << buffer2.str();
-          prikaz.close();
+        m_users[m_currentUser].account.balance -= amount;
+        m_users[recipient].account.balance += amount;
+        
+        logTransaction(m_currentUser, recipient, amount);
+        
+        std::cout << "Transfer successful." << std::endl;
+        std::cout << "\nPress Enter to return to the menu...";
+        std::cin.get();
+    }
+
+    void handleDeposit() {
+        std::cout << "Enter amount to deposit: $";
+        double amount;
+        std::cin >> amount;
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+        if(amount <= 0) {
+            std::cout << "Invalid amount." << std::endl;
+            sleep(1500);
+            return;
         }
-        else if (choice == 5) {
-        	system("CLS");
-          cout << "Wait, you are calling support..." << endl;
-          Sleep(800);
-          cout << "Operator: Hello, how can I help you?" << endl;
-          string problem;
-          cin.ignore();
-          getline(cin, problem);
-          cout << generateRandomResponse() << endl;
-        } else if (choice == 6) {
-        	cout<<"Logging you out, wait...";
-        	Sleep(800);
-        	system("CLS");
-          return;
+
+        m_users[m_currentUser].account.balance += amount;
+        logTransaction(m_currentUser, "DEPOSIT", amount);
+        std::cout << "Deposit successful." << std::endl;
+        std::cout << "\nPress Enter to return to the menu...";
+        std::cin.get();
+    }
+
+    void handleWithdrawal() {
+         std::cout << "Enter amount to withdraw: $";
+        double amount;
+        std::cin >> amount;
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+        if (amount <= 0 || amount > m_users[m_currentUser].account.balance) {
+            std::cout << "Invalid amount or insufficient funds." << std::endl;
+            sleep(1500);
+            return;
+        }
+        
+        m_users[m_currentUser].account.balance -= amount;
+        logTransaction(m_currentUser, "WITHDRAWAL", -amount);
+        std::cout << "Withdrawal successful." << std::endl;
+        std::cout << "\nPress Enter to return to the menu...";
+        std::cin.get();
+    }
+
+    void viewTransactions() {
+        clearScreen();
+        std::cout << "\n--- Transaction Log for " << m_currentUser << " ---" << std::endl;
+        std::ifstream file(m_currentUser + "_transactions.log");
+        if(!file) {
+            std::cout << "No transactions found." << std::endl;
         } else {
-          cout << "Invalid choice. Try again." << endl;
-          Sleep(800);
-          system("CLS");
-          goto usergoto;
+            std::string line;
+            while(std::getline(file, line)) {
+                std::cout << line << std::endl;
+            }
         }
-}
-
-// register
-void registerUser() {
-  system("CLS");
-  string email;
-  string username;
-  string password;
-  string number;
-  string name;
-  
-  opetbatice:
-  cout << "Enter your email: ";
-  cin >> email;
-
-bool isValid = false;
-bool hasDot = false;
-bool hasTextAfterAtSymbol = false;
-
-for (int i = 0; i < email.length(); i++) {
-  char c = email[i];
-  if (c == '@') {
-    isValid = true;
-    if (i + 1 < email.length() && email[i+1] != '.') {
-      hasTextAfterAtSymbol = true;
+        std::cout << "\nPress Enter to continue...";
+        std::cin.get();
     }
-  }
-  if (isValid && c == '.') {
-    hasDot = true;
-    break;
-  }
-}
 
-if (!isValid) {
-  cout << "Invalid email address, try again." << endl;
-  Sleep(800);
-  system("CLS");
-  goto opetbatice;
-}
+    void loadData() {
+        std::ifstream file(m_dataFile);
+        if (!file) return;
 
-if (!hasTextAfterAtSymbol) {
-  cout << "Invalid email address, missing text after '@' symbol." << endl;
-  Sleep(800);
-  system("CLS");
-  goto opetbatice;
-}
-
-if (!hasDot) {
-  cout << "Invalid email address, missing dot after '@' symbol." << endl;
-  Sleep(800);
-  system("CLS");
-  goto opetbatice;
-}
-
-isValid = false;
-
-for (char c : email) {
-  if (!isupper(c)) {
-    isValid = true;
-    break;
-  }
-}
-
-if (!isValid) {
-  cout << "Email address cannot be all in caps." << endl;
-  Sleep(800);
-  system("CLS");
-  goto opetbatice;
-}
-  
-  // checks if email already exists in file
-    ifstream input1("Accounts/users.txt");
-    string line1;
-    bool emailInUse = false;
-    while (getline(input1, line1)) {
-        if (line1.find(email) != string::npos) {
-            emailInUse = true;
-            break;
+        std::string line;
+        while (std::getline(file, line)) {
+            std::stringstream ss(line);
+            User u;
+            ss >> u.username >> u.hashedPassword >> u.email >> u.account.accountNumber >> u.account.balance;
+            m_users[u.username] = u;
         }
     }
-    input1.close();
 
-    if (emailInUse) {
-        cout << "This email address is already in use. Please enter a different email address." << endl;
-        Sleep(800);
-        system("CLS");
-        goto opetbatice;
+    void saveData() {
+        std::ofstream file(m_dataFile);
+        for (const auto& pair : m_users) {
+            const User& u = pair.second;
+            file << u.username << " " << u.hashedPassword << " " << u.email << " " << u.account.accountNumber << " " << u.account.balance << "\n";
+        }
     }
-  ponovo3:
-  cout << "Enter your username: ";
-  cin >> username;
-  
-  // checks if username already exists in file 
-  ifstream input("Accounts/users.txt");
-  string line;
-  bool taken = false;
-  while (getline(input, line)) {
-    if (line.find(username + ":") == 0) {
-      taken = true;
-      break;
+
+    std::string generateAccountNumber() {
+        std::uniform_int_distribution<int> dist(0, 9);
+        std::string number = "ACC";
+        for (int i = 0; i < 9; ++i) {
+            number += std::to_string(dist(m_rng));
+        }
+        return number;
     }
-  }
-  
-  input.close();
-  if (taken) {
-    cout << "This username is already taken. Try again." << endl;
-    Sleep(800);
-    system("CLS");
-    goto ponovo3;
-  }
-  
-  isValid = false;
-  for (char c : username) {
-    if (!isupper(c)) {
-      isValid = true;
-      break;
+
+    void logTransaction(const std::string& from, const std::string& to, double amount) {
+        auto now = std::chrono::system_clock::now();
+        std::time_t time = std::chrono::system_clock::to_time_t(now);
+        char timeStr[26];
+        ctime_s(timeStr, sizeof(timeStr), &time);
+        timeStr[24] = '\0';
+
+        std::ofstream file(from + "_transactions.log", std::ios::app);
+        file << "[" << timeStr << "] ";
+        if(to == "DEPOSIT") {
+             file << "Deposited $" << std::fixed << std::setprecision(2) << amount;
+        } else if (to == "WITHDRAWAL") {
+             file << "Withdrew $" << std::fixed << std::setprecision(2) << -amount;
+        } else {
+             file << "Transferred $" << std::fixed << std::setprecision(2) << amount << " to " << to;
+             std::ofstream recipientFile(to + "_transactions.log", std::ios::app);
+             recipientFile << "[" << timeStr << "] " << "Received $" << std::fixed << std::setprecision(2) << amount << " from " << from << "\n";
+        }
+        file << "\n";
     }
-  }
-  
-  if (!isValid) {
-    cout << "Username cannot be all in caps." << endl;
-    return;
-  }
-  
-  cout << "Enter your password: ";
-  cin >> password;
-  while (true) {
-  	ponovo:
-    cout << "Enter your phone number: ";
-    cin >> number;
-    isValid = true;
-    for (char c : number) {
-      if (!isdigit(c)) {
-        isValid = false;
-        break;
-      }
-    }
-    if (number.length() > 12) {
-  isValid = false;
-}
-	else if(number.length() < 6) {
-		isValid = false;
-	}
-    if (isValid) {
-      break;
-    } else {
-      cout << "You did not enter a valid phone number. Please try again." << endl;
-      Sleep(800);
-      system("CLS");
-      goto ponovo;
-}
-}
-ponovo2:
-cout << "Enter your name: ";
-cin >> name;
-bool isValid1 = true;
-  for (char f : name) {
-    if (isdigit(f)) {
-      isValid1 = false;
-      break;
-    }
-  }
-  if (!isValid1) {
-    cout << "Name cannot contain digits. Try again" << endl;
-    Sleep(800);
-      system("CLS");
-      goto ponovo2;
-  }
+};
 
-// generates random 16 digits for credit card
-unsigned long long rand_seed = std::chrono::system_clock::now().time_since_epoch().count();
-default_random_engine rand_gen(rand_seed);
-uniform_int_distribution<unsigned long long> rand_dist(1000000000000000, 9999999999999999);
-string creditCard = to_string(rand_dist(rand_gen));
-
-
-cout << "Successfully registered.\nYour credit card number is: " << creditCard << endl;
-Sleep(650);
-
-// creating folder and txt in it 
-  CreateDirectory("Accounts", NULL);
-  ofstream output("Accounts/users.txt", ios::app);
-  output << username << ":" << password << endl;
-  output << "email:" << email << endl;
-  output << "number:" << number << endl;
-  output << "name:" << name << endl;
-  output << "creditCard:" << creditCard << endl;
-  output << endl;
-  output.close();
-  accountBalances.emplace(username, 350.0);
-  saveBalances(username);
-  system("CLS");
-  userMenu(username, password);
-}
-
-
-// login
-void login() {
-system("CLS");
-string username;
-string password;
-
-cout << "Enter your username: ";
-cin >> username;
-cout << "Enter your password: ";
-cin >> password;
-
-// checks if account exists
-ifstream input("Accounts/users.txt");
-  string line;
-  bool found = false;
-  while (getline(input, line)) {
-    if (line.find(username + ":") == 0) {
-      size_t separatorIndex = line.find(":");
-      string value = line.substr(separatorIndex + 1);
-      if (value == password) {
-        found = true;
-        break;
-      }
-    }
-  }
-  input.close();
-
-  if (!found) {
-    cout << "Invalid username or password, please try again." << endl;
-    Sleep(600);
-    system("CLS");
-    return;
-  }
-  cout<<"Please wait..";
-  Sleep(500);
-  system("CLS");
-  userMenu(username,password);
-  }
-
-// main
 int main() {
-  cout << "Welcome to the Bank." << endl;
-  while (true) {
-    cout << "1. Register" << endl;
-    cout << "2. Login" << endl;
-    cout << "3. Exit" << endl;
-    int choice;
-    cin >> choice;
-    if (cin.fail()) {
-	cin.clear();
-	cin.ignore(numeric_limits<streamsize>::max(), '\n');
-	cout << "Invalid input. Please enter a number." << endl;
-	Sleep(600);
-	system("CLS");
-	continue;
-	}
-    if (choice == 1) {
-      registerUser();
-    } else if (choice == 2) {
-      login();
-    } else if (choice == 3) {
-    	system("CLS");
-      cout<<"Exiting...";
-      Sleep(600);
-      return 0;
-    } else {
-      cout << "Invalid choice." << endl;
-    }
-  }
+    BankSystem bank("bank_data.dat");
+    bank.run();
     return 0;
 }
